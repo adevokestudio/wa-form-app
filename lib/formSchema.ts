@@ -275,6 +275,42 @@ export interface FormNotificationSettings {
  * (round-robin across a team) isn't built yet. */
 export type TeamMode = "single" | "distribute" | "conditional";
 
+/** One item in a form's WhatsApp Catalogue/Cart (the premium shopping-cart
+ * feature — see lib/ordersStore.ts for the order side of it). */
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  description?: string;
+  /** Always in `catalog.currency` — a product doesn't carry its own. */
+  price: number;
+  imageUrl?: string;
+  /** Hides it from the public catalogue without losing it / its past
+   * orders — same "soft disable" pattern as FormDefinition.enabled. */
+  active: boolean;
+}
+
+export type CatalogPaymentMethod = "paypal" | "payhere" | "cod" | "bank_transfer";
+
+/** Settings → Catalogue (only reachable at all when the owning client's
+ * account has the feature switched on by an admin — see User.catalogEnabled
+ * in lib/usersStore.ts). Turns a form into a product catalogue with a cart
+ * and checkout, alongside (not instead of) its regular fields. */
+export interface CatalogSettings {
+  enabled: boolean;
+  currency: string;
+  products: CatalogProduct[];
+  /** Which of the account's configured payment methods this particular
+   * form offers at checkout — a subset of what the owner has actually set
+   * up (see lib/usersStore.ts's payment fields); the public page further
+   * filters this down to whichever are actually configured, in case the
+   * owner removes a method's details after enabling it here. */
+  paymentMethods: CatalogPaymentMethod[];
+}
+
+export function makeProductId(): string {
+  return `prod_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export interface FormDefinition {
   slug: string;
   name: string;
@@ -300,6 +336,8 @@ export interface FormDefinition {
   seo?: FormSeoSettings;
   notifications?: FormNotificationSettings;
   teamMode?: TeamMode;
+  /** Settings → Catalogue (premium feature, see CatalogSettings above). */
+  catalog?: CatalogSettings;
 }
 
 export function fieldTypeMeta(type: FieldType): FieldTypeMeta {

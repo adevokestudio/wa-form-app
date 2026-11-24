@@ -14,14 +14,32 @@ export interface User {
   whatsappNumber: string;
   status: UserStatus;
   createdAt: string;
+  /** Admin-controlled "premium" switch for the WhatsApp Catalogue/Cart
+   * feature — a client only sees the Catalogue tab, the Orders tab, and
+   * the payment-settings section of their Account page once this is on. */
+  catalogEnabled: boolean;
+  /** Each client's own payment details, so a customer's money goes
+   * straight to them — this app never holds or routes anyone's funds. */
+  paypalMeUsername: string;
+  payHereMerchantId: string;
+  payHereMerchantSecret: string;
+  /** Defaults to true (sandbox) so a freshly-entered PayHere integration
+   * can't take a real payment before the client has tested it. */
+  payHereSandbox: boolean;
+  bankTransferDetails: string;
 }
 
-/** What's safe to send to the browser / use in a session — never the hash. */
-export type PublicUser = Omit<User, "passwordHash">;
+/** What's safe to send to the browser / use in a session — never the
+ * password hash or the PayHere merchant secret (a write-only value, like
+ * the password itself: the UI only ever needs to know whether one is
+ * already set, via payHereSecretSet, never its actual contents). */
+export type PublicUser = Omit<User, "passwordHash" | "payHereMerchantSecret"> & {
+  payHereSecretSet: boolean;
+};
 
 export function toPublicUser(user: User): PublicUser {
-  const { passwordHash: _passwordHash, ...rest } = user;
-  return rest;
+  const { passwordHash: _passwordHash, payHereMerchantSecret, ...rest } = user;
+  return { ...rest, payHereSecretSet: Boolean(payHereMerchantSecret) };
 }
 
 function rowToUser(row: Record<string, unknown>): User {
@@ -34,6 +52,12 @@ function rowToUser(row: Record<string, unknown>): User {
     whatsappNumber: String(row.whatsappNumber ?? ""),
     status: row.status as UserStatus,
     createdAt: String(row.createdAt),
+    catalogEnabled: Number(row.catalogEnabled ?? 0) !== 0,
+    paypalMeUsername: String(row.paypalMeUsername ?? ""),
+    payHereMerchantId: String(row.payHereMerchantId ?? ""),
+    payHereMerchantSecret: String(row.payHereMerchantSecret ?? ""),
+    payHereSandbox: Number(row.payHereSandbox ?? 1) !== 0,
+    bankTransferDetails: String(row.bankTransferDetails ?? ""),
   };
 }
 
@@ -101,6 +125,7 @@ export interface CreateUserInput {
   name: string;
   role: UserRole;
   whatsappNumber?: string;
+  catalogEnabled?: boolean;
 }
 
 export async function createUser(input: CreateUserInput): Promise<User> {
@@ -121,12 +146,35 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     whatsappNumber: input.whatsappNumber?.trim() ?? "",
     status: "active",
     createdAt: new Date().toISOString(),
+    catalogEnabled: input.catalogEnabled ?? false,
+    paypalMeUsername: "",
+    payHereMerchantId: "",
+    payHereMerchantSecret: "",
+    payHereSandbox: true,
+    bankTransferDetails: "",
   };
 
   db.run(
-    `INSERT INTO users (id, email, passwordHash, name, role, whatsappNumber, status, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [user.id, user.email, user.passwordHash, user.name, user.role, user.whatsappNumber, user.status, user.createdAt]
+    `INSERT INTO users (
+       id, email, passwordHash, name, role, whatsappNumber, status, createdAt,
+       catalogEnabled, paypalMeUsername, payHereMerchantId, payHereMerchantSecret, payHereSandbox, bankTransferDetails
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      user.id,
+      user.email,
+      user.passwordHash,
+      user.name,
+      user.role,
+      user.whatsappNumber,
+      user.status,
+      user.createdAt,
+      user.catalogEnabled ? 1 : 0,
+      user.paypalMeUsername,
+      user.payHereMerchantId,
+      user.payHereMerchantSecret,
+      user.payHereSandbox ? 1 : 0,
+      user.bankTransferDetails,
+    ]
   );
   await persist(db);
 
@@ -138,6 +186,18 @@ export interface UpdateUserInput {
   whatsappNumber?: string;
   status?: UserStatus;
   password?: string;
+  /** Admin-only in practice (the account-settings API never forwards this
+   * from a client's own request) — see requireAdminApi at the call site. */
+  catalogEnabled?: boolean;
+  paypalMeUsername?: string;
+  payHereMerchantId?: string;
+  /** Write-only, same handling as `password`: an empty/undefined value
+   * leaves whatever secret is already stored untouched rather than
+   * clearing it — a client re-saving their PayPal username shouldn't
+   * accidentally wipe out their PayHere secret in the same request. */
+  payHereMerchantSecret?: string;
+  payHereSandbox?: boolean;
+  bankTransferDetails?: string;
 }
 
 export async function updateUser(id: string, patch: UpdateUserInput): Promise<User | null> {
@@ -151,11 +211,35 @@ export async function updateUser(id: string, patch: UpdateUserInput): Promise<Us
     whatsappNumber: patch.whatsappNumber !== undefined ? patch.whatsappNumber.trim() : existing.whatsappNumber,
     status: patch.status ?? existing.status,
     passwordHash: patch.password ? await hashPassword(patch.password) : existing.passwordHash,
+    catalogEnabled: patch.catalogEnabled ?? existing.catalogEnabled,
+    paypalMeUsername: patch.paypalMeUsername !== undefined ? patch.paypalMeUsername.trim() : existing.paypalMeUsername,
+    payHereMerchantId:
+      patch.payHereMerchantId !== undefined ? patch.payHereMerchantId.trim() : existing.payHereMerchantId,
+    payHereMerchantSecret: patch.payHereMerchantSecret ? patch.payHereMerchantSecret.trim() : existing.payHereMerchantSecret,
+    payHereSandbox: patch.payHereSandbox ?? existing.payHereSandbox,
+    bankTransferDetails:
+      patch.bankTransferDetails !== undefined ? patch.bankTransferDetails : existing.bankTransferDetails,
   };
 
   db.run(
-    `UPDATE users SET name = ?, whatsappNumber = ?, status = ?, passwordHash = ? WHERE id = ?`,
-    [next.name, next.whatsappNumber, next.status, next.passwordHash, id]
+    `UPDATE users SET
+       name = ?, whatsappNumber = ?, status = ?, passwordHash = ?,
+       catalogEnabled = ?, paypalMeUsername = ?, payHereMerchantId = ?, payHereMerchantSecret = ?,
+       payHereSandbox = ?, bankTransferDetails = ?
+     WHERE id = ?`,
+    [
+      next.name,
+      next.whatsappNumber,
+      next.status,
+      next.passwordHash,
+      next.catalogEnabled ? 1 : 0,
+      next.paypalMeUsername,
+      next.payHereMerchantId,
+      next.payHereMerchantSecret,
+      next.payHereSandbox ? 1 : 0,
+      next.bankTransferDetails,
+      id,
+    ]
   );
   await persist(db);
 

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canAccessForm, getCurrentUser } from "@/lib/auth";
+import { withApiError } from "@/lib/apiRoute";
 import { duplicateForm, getForm } from "@/lib/formsStore";
 
-export async function POST(
+export const POST = withApiError(async (
   _request: NextRequest,
   context: RouteContext<"/api/forms/[slug]/duplicate">
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
@@ -21,4 +22,4 @@ export async function POST(
   }
 
   return NextResponse.json({ ok: true, form: copy }, { status: 201 });
-}
+});

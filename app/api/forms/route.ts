@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { withApiError } from "@/lib/apiRoute";
 import { createForm, listForms } from "@/lib/formsStore";
 import { getUserById } from "@/lib/usersStore";
 
@@ -17,7 +18,7 @@ async function resolveOwnerId(request: NextRequest): Promise<string | null> {
   return user.id;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withApiError(async (request: NextRequest) => {
   const ownerId = await resolveOwnerId(request);
   if (!ownerId) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -25,9 +26,9 @@ export async function GET(request: NextRequest) {
 
   const forms = await listForms(ownerId);
   return NextResponse.json({ forms });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withApiError(async (request: NextRequest) => {
   const ownerId = await resolveOwnerId(request);
   if (!ownerId) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -39,4 +40,4 @@ export async function POST(request: NextRequest) {
   const owner = await getUserById(ownerId);
   const form = await createForm(name, ownerId, owner?.whatsappNumber ?? "");
   return NextResponse.json({ ok: true, form }, { status: 201 });
-}
+});

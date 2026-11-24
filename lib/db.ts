@@ -34,6 +34,38 @@ const SCHEMA = `
   );
 `;
 
+/**
+ * Columns added after the table above first shipped — the WhatsApp
+ * Catalogue/Cart premium feature's per-client settings (whether it's
+ * switched on for them, and their own payment details, so money goes
+ * straight to each client rather than through us). `ALTER TABLE ... ADD
+ * COLUMN` has no "IF NOT EXISTS" in SQLite, so each one is attempted and a
+ * "duplicate column" error (meaning a previous run already added it) is
+ * swallowed; anything else still surfaces.
+ */
+const MIGRATIONS: string[] = [
+  `ALTER TABLE users ADD COLUMN catalogEnabled INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN paypalMeUsername TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE users ADD COLUMN payHereMerchantId TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE users ADD COLUMN payHereMerchantSecret TEXT NOT NULL DEFAULT ''`,
+  // Defaults to sandbox (1) so a client's first-ever save of their PayHere
+  // details can't accidentally start taking real payments before they've
+  // tested the flow and switched this off themselves.
+  `ALTER TABLE users ADD COLUMN payHereSandbox INTEGER NOT NULL DEFAULT 1`,
+  `ALTER TABLE users ADD COLUMN bankTransferDetails TEXT NOT NULL DEFAULT ''`,
+];
+
+function runMigrations(db: Database): void {
+  for (const statement of MIGRATIONS) {
+    try {
+      db.run(statement);
+    } catch (err) {
+      const isDuplicateColumn = err instanceof Error && /duplicate column name/i.test(err.message);
+      if (!isDuplicateColumn) throw err;
+    }
+  }
+}
+
 let dbPromise: Promise<Database> | null = null;
 
 async function loadDb(): Promise<Database> {
@@ -49,6 +81,7 @@ async function loadDb(): Promise<Database> {
   }
 
   db.run(SCHEMA);
+  runMigrations(db);
   return db;
 }
 

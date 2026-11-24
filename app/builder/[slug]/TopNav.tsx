@@ -6,8 +6,18 @@ import { useState } from "react";
 
 /** Shared top bar for every /builder/[slug]/* page — Build / Share /
  * Responses on the left (matching each to its own route so the browser
- * back button and direct links work), Open + Settings on the right. */
-export default function TopNav({ slug, formName }: { slug: string; formName: string }) {
+ * back button and direct links work), Open + Settings on the right.
+ * Catalogue / Orders only appear when the form's owning account has the
+ * premium WhatsApp Catalogue/Cart feature switched on. */
+export default function TopNav({
+  slug,
+  formName,
+  catalogEnabled = false,
+}: {
+  slug: string;
+  formName: string;
+  catalogEnabled?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -28,6 +38,12 @@ export default function TopNav({ slug, formName }: { slug: string; formName: str
     { href: base, label: "Build", match: (p: string) => p === base },
     { href: `${base}/share`, label: "Share", match: (p: string) => p === `${base}/share` },
     { href: `${base}/responses`, label: "Responses", match: (p: string) => p === `${base}/responses` },
+    ...(catalogEnabled
+      ? [
+          { href: `${base}/catalog`, label: "Catalogue", match: (p: string) => p === `${base}/catalog` },
+          { href: `${base}/orders`, label: "Orders", match: (p: string) => p === `${base}/orders` },
+        ]
+      : []),
   ];
 
   const isSettings = pathname === `${base}/settings`;

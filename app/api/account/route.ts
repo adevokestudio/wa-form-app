@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { withApiError } from "@/lib/apiRoute";
 import { getUserById, toPublicUser, updateUser, verifyPassword } from "@/lib/usersStore";
 
 /** A user updating their own profile — WhatsApp number and/or password.
  * Changing the password requires the current one; nothing here lets a
  * caller touch anyone's account but their own. */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withApiError(async (request: NextRequest) => {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
@@ -14,10 +15,42 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Missing request body" }, { status: 400 });
   }
 
-  const patch: { whatsappNumber?: string; password?: string } = {};
+  const patch: {
+    whatsappNumber?: string;
+    password?: string;
+    paypalMeUsername?: string;
+    payHereMerchantId?: string;
+    payHereMerchantSecret?: string;
+    payHereSandbox?: boolean;
+    bankTransferDetails?: string;
+  } = {};
 
   if (typeof body.whatsappNumber === "string") {
     patch.whatsappNumber = body.whatsappNumber;
+  }
+
+  // Payment settings (PayPal/PayHere/bank transfer) only apply for an
+  // account with the Catalogue/Cart feature switched on — silently
+  // ignored otherwise, the same way the builder's Catalogue tab is simply
+  // not shown to them.
+  if (user.catalogEnabled) {
+    if (typeof body.paypalMeUsername === "string") {
+      patch.paypalMeUsername = body.paypalMeUsername;
+    }
+    if (typeof body.payHereMerchantId === "string") {
+      patch.payHereMerchantId = body.payHereMerchantId;
+    }
+    // Write-only, like the password: an empty value here means "leave the
+    // existing secret alone", not "clear it" — see updateUser's handling.
+    if (typeof body.payHereMerchantSecret === "string" && body.payHereMerchantSecret) {
+      patch.payHereMerchantSecret = body.payHereMerchantSecret;
+    }
+    if (typeof body.payHereSandbox === "boolean") {
+      patch.payHereSandbox = body.payHereSandbox;
+    }
+    if (typeof body.bankTransferDetails === "string") {
+      patch.bankTransferDetails = body.bankTransferDetails;
+    }
   }
 
   if (typeof body.newPassword === "string" && body.newPassword) {
@@ -40,4 +73,4 @@ export async function PATCH(request: NextRequest) {
   if (!updated) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   return NextResponse.json({ ok: true, user: toPublicUser(updated) });
-}
+});

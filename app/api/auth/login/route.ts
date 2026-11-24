@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withApiError } from "@/lib/apiRoute";
 import { createSessionCookie } from "@/lib/session";
 import { ensureBootstrapAdmin, getUserByEmail, verifyPassword } from "@/lib/usersStore";
 
-export async function POST(request: NextRequest) {
+export const POST = withApiError(async (request: NextRequest) => {
   await ensureBootstrapAdmin();
 
   const body = await request.json().catch(() => null);
@@ -25,4 +26,4 @@ export async function POST(request: NextRequest) {
   await createSessionCookie(user.id, user.role);
 
   return NextResponse.json({ ok: true, role: user.role });
-}
+});

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/apiAuth";
+import { withApiError } from "@/lib/apiRoute";
 import { createUser, listClients, toPublicUser } from "@/lib/usersStore";
 
-export async function GET() {
+export const GET = withApiError(async () => {
   const denied = await requireAdminApi();
   if (denied) return denied;
 
   const clients = await listClients();
   return NextResponse.json({ clients: clients.map(toPublicUser) });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withApiError(async (request: NextRequest) => {
   const denied = await requireAdminApi();
   if (denied) return denied;
 
@@ -27,8 +28,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const catalogEnabled = body?.catalogEnabled === true;
+
   try {
-    const user = await createUser({ name, email, password, whatsappNumber, role: "client" });
+    const user = await createUser({ name, email, password, whatsappNumber, role: "client", catalogEnabled });
     return NextResponse.json({ ok: true, client: toPublicUser(user) }, { status: 201 });
   } catch (err) {
     return NextResponse.json(
@@ -36,4 +39,4 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-}
+});

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canAccessForm, getCurrentUser } from "@/lib/auth";
+import { withApiError } from "@/lib/apiRoute";
 import { deleteForm, getForm, patchForm, saveForm } from "@/lib/formsStore";
 import type { FormDefinition } from "@/lib/formSchema";
 
-export async function GET(
+export const GET = withApiError(async (
   _request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
@@ -21,12 +22,12 @@ export async function GET(
   }
 
   return NextResponse.json({ form });
-}
+});
 
-export async function PUT(
+export const PUT = withApiError(async (
   request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
@@ -59,15 +60,15 @@ export async function PUT(
 
   await saveForm(definition);
   return NextResponse.json({ ok: true, form: definition });
-}
+});
 
 /** Partial update — used by the Settings pages (General, SEO, Notifications,
  * Team) and the dashboard's Rename action, each of which only touches its
  * own slice of the form rather than resending everything. */
-export async function PATCH(
+export const PATCH = withApiError(async (
   request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
@@ -94,12 +95,12 @@ export async function PATCH(
   }
 
   return NextResponse.json({ ok: true, form });
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiError(async (
   _request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
@@ -115,4 +116,4 @@ export async function DELETE(
   }
 
   return NextResponse.json({ ok: true });
-}
+});

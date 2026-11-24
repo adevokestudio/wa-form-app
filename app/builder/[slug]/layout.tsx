@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { canAccessForm, requireUser } from "@/lib/auth";
 import { getForm } from "@/lib/formsStore";
+import { getUserById } from "@/lib/usersStore";
 import TopNav from "./TopNav";
 
 // Every page here depends on who's logged in and which form they own —
@@ -21,9 +22,15 @@ export default async function BuilderLayout({
     notFound();
   }
 
+  // The Catalogue/Cart tabs only show up for a form whose owning account
+  // has the (admin-granted) premium feature switched on — look that up by
+  // the form's actual owner, not the signed-in user, so an admin viewing
+  // a specific client's form (?client=<id>) sees that client's setting.
+  const owner = form.ownerId ? await getUserById(form.ownerId) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopNav slug={form.slug} formName={form.name} />
+      <TopNav slug={form.slug} formName={form.name} catalogEnabled={owner?.catalogEnabled ?? false} />
       <div className="mx-auto max-w-5xl px-4 py-6">{children}</div>
     </div>
   );

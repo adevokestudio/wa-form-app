@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import type { CatalogPaymentMethod } from "@/lib/formSchema";
 import { getForm } from "@/lib/formsStore";
 import { getTakenValuesForLabel } from "@/lib/submissionsStore";
+import { getUserById } from "@/lib/usersStore";
+import Catalog from "./Catalog";
 import DynamicForm from "./DynamicForm";
 
 /**
@@ -58,14 +61,46 @@ export default async function PublicFormPage({
     }
   }
 
+  // Catalogue/Cart (premium): only actually shows up when the owning
+  // account still has the feature switched on AND has the payment methods
+  // it was configured with — re-checked here (not just trusted from the
+  // form's own saved settings) in case an admin later turns the feature
+  // off, or the client removes a payment method's details, after a form
+  // was already set up to offer it.
+  const owner = form.ownerId ? await getUserById(form.ownerId) : null;
+  const activeProducts = form.catalog?.products.filter((p) => p.active) ?? [];
+  const showCatalog = Boolean(form.catalog?.enabled && owner?.catalogEnabled && activeProducts.length > 0);
+
+  const offeredPaymentMethods: CatalogPaymentMethod[] =
+    showCatalog && owner
+      ? (form.catalog?.paymentMethods ?? []).filter((method) => {
+          if (method === "cod") return true;
+          if (method === "paypal") return Boolean(owner.paypalMeUsername);
+          if (method === "payhere") return Boolean(owner.payHereMerchantId) && Boolean(owner.payHereMerchantSecret);
+          if (method === "bank_transfer") return Boolean(owner.bankTransferDetails);
+          return false;
+        })
+      : [];
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-gray-50 px-4 py-16">
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-gray-900">{form.name}</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Fill this in and it&apos;ll open WhatsApp with your message ready to send.
+          {showCatalog
+            ? "Add items to your cart, then check out below."
+            : "Fill this in and it'll open WhatsApp with your message ready to send."}
         </p>
       </div>
+
+      {showCatalog && offeredPaymentMethods.length > 0 && (
+        <Catalog
+          formSlug={form.slug}
+          currency={form.catalog?.currency || "LKR"}
+          products={activeProducts}
+          paymentMethods={offeredPaymentMethods}
+        />
+      )}
 
       <DynamicForm
         formSlug={form.slug}

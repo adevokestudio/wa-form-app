@@ -15,8 +15,145 @@ export default function AccountForm({ user }: { user: PublicUser }) {
       </section>
 
       <WhatsappSection initialNumber={user.whatsappNumber} />
+      {user.catalogEnabled && <PaymentSection user={user} />}
       <PasswordSection />
     </main>
+  );
+}
+
+function PaymentSection({ user }: { user: PublicUser }) {
+  const [paypalMeUsername, setPaypalMeUsername] = useState(user.paypalMeUsername);
+  const [payHereMerchantId, setPayHereMerchantId] = useState(user.payHereMerchantId);
+  const [payHereMerchantSecret, setPayHereMerchantSecret] = useState("");
+  const [payHereSecretSet, setPayHereSecretSet] = useState(user.payHereSecretSet);
+  const [payHereSandbox, setPayHereSandbox] = useState(user.payHereSandbox);
+  const [bankTransferDetails, setBankTransferDetails] = useState(user.bankTransferDetails);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paypalMeUsername,
+          payHereMerchantId,
+          payHereMerchantSecret: payHereMerchantSecret || undefined,
+          payHereSandbox,
+          bankTransferDetails,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setMessage("Saved.");
+        if (payHereMerchantSecret) {
+          setPayHereSecretSet(true);
+          setPayHereMerchantSecret("");
+        }
+      } else {
+        setMessage(data?.error || "Couldn't save — try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5">
+      <h2 className="mb-1 text-sm font-semibold text-gray-900">Payment settings</h2>
+      <p className="mb-4 text-xs text-gray-400">
+        Used by the WhatsApp Catalogue/Cart feature on your forms. Money from PayPal and PayHere orders goes
+        straight to your own accounts below — this app never holds or handles your funds.
+      </p>
+
+      <div className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-gray-700">PayPal.Me username</span>
+          <input
+            value={paypalMeUsername}
+            onChange={(e) => setPaypalMeUsername(e.target.value)}
+            placeholder="yourname"
+            className="max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <span className="text-xs text-gray-400">
+            Free to set up at paypal.me if you don&apos;t have one yet. Note: PayPal can&apos;t receive Sri
+            Lankan Rupees directly — orders will be billed in your PayPal.Me link&apos;s own currency.
+          </span>
+        </label>
+
+        <div className="border-t border-gray-100 pt-4">
+          <p className="mb-2 text-sm font-medium text-gray-700">PayHere</p>
+          <div className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-gray-700">Merchant ID</span>
+              <input
+                value={payHereMerchantId}
+                onChange={(e) => setPayHereMerchantId(e.target.value)}
+                placeholder="121XXXX"
+                className="max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-gray-700">Merchant Secret</span>
+              <input
+                type="password"
+                value={payHereMerchantSecret}
+                onChange={(e) => setPayHereMerchantSecret(e.target.value)}
+                placeholder={payHereSecretSet ? "••••••••  (already set — leave blank to keep it)" : "Not set yet"}
+                className="max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+              <span className="text-xs text-gray-400">
+                Found in your PayHere account under Side Menu → Integrations. You&apos;ll also need to add this
+                site&apos;s domain there (approval can take up to 24 hours) before real payments will work.
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={payHereSandbox}
+                onChange={(e) => setPayHereSandbox(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium text-gray-700">Test mode</span>
+                <br />
+                <span className="text-xs text-gray-400">
+                  Leave this on while you&apos;re setting up — no real money moves. Turn it off only once
+                  you&apos;ve tested a checkout and you&apos;re ready to accept real payments.
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <label className="flex flex-col gap-1 text-sm border-t border-gray-100 pt-4">
+          <span className="font-medium text-gray-700">Bank transfer details</span>
+          <textarea
+            value={bankTransferDetails}
+            onChange={(e) => setBankTransferDetails(e.target.value)}
+            rows={3}
+            placeholder={"Bank name\nAccount name\nAccount number\nBranch"}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <span className="text-xs text-gray-400">
+            Shown to a customer who chooses &quot;Direct bank transfer&quot; at checkout.
+          </span>
+        </label>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="self-start rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save payment settings"}
+        </button>
+        {message && <p className="text-xs text-gray-500">{message}</p>}
+      </div>
+    </section>
   );
 }
 

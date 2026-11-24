@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/apiAuth";
+import { withApiError } from "@/lib/apiRoute";
 import { deleteUser, getUserById, toPublicUser, updateUser } from "@/lib/usersStore";
 
-export async function PATCH(request: NextRequest, context: RouteContext<"/api/admin/clients/[id]">) {
+export const PATCH = withApiError(async (request: NextRequest, context: RouteContext<"/api/admin/clients/[id]">) => {
   const denied = await requireAdminApi();
   if (denied) return denied;
 
@@ -26,13 +27,17 @@ export async function PATCH(request: NextRequest, context: RouteContext<"/api/ad
     whatsappNumber: typeof body.whatsappNumber === "string" ? body.whatsappNumber : undefined,
     status: body.status === "active" || body.status === "disabled" ? body.status : undefined,
     password: typeof body.password === "string" && body.password ? body.password : undefined,
+    // Admin-only "premium" switch for the Catalogue/Cart feature — this
+    // route is already gated to admins by requireAdminApi above, so a
+    // client can never grant this to themselves via /api/account.
+    catalogEnabled: typeof body.catalogEnabled === "boolean" ? body.catalogEnabled : undefined,
   });
 
   if (!updated) return NextResponse.json({ error: "Client not found" }, { status: 404 });
   return NextResponse.json({ ok: true, client: toPublicUser(updated) });
-}
+});
 
-export async function DELETE(_request: NextRequest, context: RouteContext<"/api/admin/clients/[id]">) {
+export const DELETE = withApiError(async (_request: NextRequest, context: RouteContext<"/api/admin/clients/[id]">) => {
   const denied = await requireAdminApi();
   if (denied) return denied;
 
@@ -45,4 +50,4 @@ export async function DELETE(_request: NextRequest, context: RouteContext<"/api/
   const ok = await deleteUser(id);
   if (!ok) return NextResponse.json({ error: "Client not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
-}
+});

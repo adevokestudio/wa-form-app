@@ -64,6 +64,7 @@ export default function AdminClients({ initialClients }: { initialClients: Publi
                 <th className="px-4 py-2 font-medium">Name</th>
                 <th className="px-4 py-2 font-medium">Email</th>
                 <th className="px-4 py-2 font-medium">WhatsApp number</th>
+                <th className="px-4 py-2 font-medium">Catalogue</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium"></th>
               </tr>
@@ -74,6 +75,15 @@ export default function AdminClients({ initialClients }: { initialClients: Publi
                   <td className="px-4 py-3 font-medium text-gray-900">{client.name}</td>
                   <td className="px-4 py-3 text-gray-600">{client.email}</td>
                   <td className="px-4 py-3 text-gray-600">{client.whatsappNumber || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                        client.catalogEnabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {client.catalogEnabled ? "On" : "Off"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -169,6 +179,7 @@ function AddClientModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [catalogEnabled, setCatalogEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -178,7 +189,7 @@ function AddClientModal({
       const res = await fetch("/api/admin/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, whatsappNumber }),
+        body: JSON.stringify({ name, email, password, whatsappNumber, catalogEnabled }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -235,6 +246,22 @@ function AddClientModal({
               className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </Field>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={catalogEnabled}
+              onChange={(e) => setCatalogEnabled(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium text-gray-700">Enable WhatsApp Catalogue (premium)</span>
+              <br />
+              <span className="text-xs text-gray-400">
+                Lets this client build a product catalogue with a cart, and accept PayPal, PayHere, cash on
+                delivery, or bank transfer at checkout.
+              </span>
+            </span>
+          </label>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -271,6 +298,7 @@ function EditClientModal({
   const [name, setName] = useState(client.name);
   const [whatsappNumber, setWhatsappNumber] = useState(client.whatsappNumber);
   const [newPassword, setNewPassword] = useState("");
+  const [catalogEnabled, setCatalogEnabled] = useState(client.catalogEnabled);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -284,6 +312,7 @@ function EditClientModal({
           name,
           whatsappNumber,
           password: newPassword || undefined,
+          catalogEnabled,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -329,6 +358,22 @@ function EditClientModal({
               className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </Field>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={catalogEnabled}
+              onChange={(e) => setCatalogEnabled(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium text-gray-700">Enable WhatsApp Catalogue (premium)</span>
+              <br />
+              <span className="text-xs text-gray-400">
+                Lets this client build a product catalogue with a cart, and accept PayPal, PayHere, cash on
+                delivery, or bank transfer at checkout.
+              </span>
+            </span>
+          </label>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button

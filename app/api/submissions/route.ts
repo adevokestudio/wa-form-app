@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { withApiError } from "@/lib/apiRoute";
 import { getForm } from "@/lib/formsStore";
 import { appendSubmission, readSubmissions, type SubmissionRecord } from "@/lib/submissionsStore";
 
@@ -50,7 +51,7 @@ async function forwardToGoogleSheet(record: SubmissionRecord) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withApiError(async (request: NextRequest) => {
   const body = await request.json();
   const { formSlug, answers } = body ?? {};
 
@@ -68,12 +69,12 @@ export async function POST(request: NextRequest) {
   await forwardToGoogleSheet(record);
 
   return NextResponse.json({ ok: true });
-}
+});
 
 /** Not used by any page today (the Responses tab reads straight from the
  * store server-side) — kept for admin tooling/export, but gated so a
  * client can't fetch this directly and see every other client's answers. */
-export async function GET() {
+export const GET = withApiError(async () => {
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
@@ -81,4 +82,4 @@ export async function GET() {
 
   const submissions = await readSubmissions();
   return NextResponse.json({ submissions });
-}
+});
