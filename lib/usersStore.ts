@@ -175,10 +175,16 @@ export async function deleteUser(id: string): Promise<boolean> {
 /**
  * First-run setup: if the database has no users at all yet, create the
  * one admin account from ADMIN_EMAIL / ADMIN_PASSWORD environment
- * variables. Called on every request that needs auth (cheap — it's a
- * single COUNT query against an in-memory database), so the very first
- * request after a fresh deploy creates the admin without needing a
- * separate setup step or script to run.
+ * variables. Only called from the login route (right before checking
+ * credentials) — deliberately NOT from the general getCurrentUser() check
+ * every page runs, because Next.js tries rendering every page once at
+ * build time to decide whether it can be pre-built as static HTML, and
+ * runs everything up to (but not including) the first cookie/session
+ * read for real while doing that. A database write sitting in that path
+ * would — and once did — run for real during the build, more than once,
+ * which is how two attempts raced to create the same admin account and
+ * failed the whole build. Keeping this out of the common path means it
+ * only ever runs when someone actually submits the login form.
  */
 export async function ensureBootstrapAdmin(): Promise<void> {
   const existing = await countUsers();
@@ -194,5 +200,15 @@ export async function ensureBootstrapAdmin(): Promise<void> {
     return;
   }
 
-  await createUser({ email, password, name: "Admin", role: "admin" });
+  try {
+    await createUser({ email, password, name: "Admin", role: "admin" });
+  } catch (err) {
+    // Two near-simultaneous first logins could both pass the countUsers()
+    // check above before either has inserted anything. Whichever loses
+    // that race hits a duplicate-email error here — harmless, since the
+    // other one succeeded at creating the same admin account a moment
+    // earlier. Anything else is a real problem and should still surface.
+    const isDuplicateEmail = err instanceof Error && /already exists/i.test(err.message);
+    if (!isDuplicateEmail) throw err;
+  }
 }

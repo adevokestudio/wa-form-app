@@ -3,6 +3,10 @@ import { canAccessForm, requireUser } from "@/lib/auth";
 import { getForm } from "@/lib/formsStore";
 import TopNav from "./TopNav";
 
+// Every page here depends on who's logged in and which form they own —
+// never pre-build it as a static page shared by every visitor.
+export const dynamic = "force-dynamic";
+
 export default async function BuilderLayout({
   params,
   children,

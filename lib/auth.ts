@@ -1,14 +1,21 @@
 import { redirect } from "next/navigation";
 import type { FormDefinition } from "./formSchema";
 import { readSession } from "./session";
-import { ensureBootstrapAdmin, getUserById, type PublicUser, toPublicUser } from "./usersStore";
+import { getUserById, type PublicUser, toPublicUser } from "./usersStore";
 
-/** Returns the logged-in user (or null), and makes sure the one-time
- * bootstrap admin exists first — cheap (a single in-memory COUNT query)
- * and safe to call on every request. */
+/**
+ * Returns the logged-in user (or null). Reads the session cookie first,
+ * before touching the database at all — Next.js tries rendering every
+ * page once at build time to see whether it can be pre-built as static
+ * HTML, and reading the session cookie is what tells it "no, this page
+ * depends on the visitor, render it fresh every time" and stops right
+ * there. Anything placed before that cookie read (a database write, for
+ * instance) would run for real during that build-time trial render —
+ * which is exactly what used to happen here before the bootstrap-admin
+ * creation moved out of this function (see ensureBootstrapAdmin's own
+ * comment in usersStore.ts).
+ */
 export async function getCurrentUser(): Promise<PublicUser | null> {
-  await ensureBootstrapAdmin();
-
   const session = await readSession();
   if (!session) return null;
 
