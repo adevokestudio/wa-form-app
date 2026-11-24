@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canAccessForm, getCurrentUser } from "@/lib/auth";
 import { deleteForm, getForm, patchForm, saveForm } from "@/lib/formsStore";
 import type { FormDefinition } from "@/lib/formSchema";
 
@@ -6,11 +7,17 @@ export async function GET(
   _request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
 ) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
   const { slug } = await context.params;
   const form = await getForm(slug);
 
   if (!form) {
     return NextResponse.json({ error: "Form not found" }, { status: 404 });
+  }
+  if (!canAccessForm(user, form)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   return NextResponse.json({ form });
@@ -20,6 +27,9 @@ export async function PUT(
   request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
 ) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
   const { slug } = await context.params;
   const body = await request.json();
 
@@ -32,6 +42,9 @@ export async function PUT(
   // Settings-page state like seo/notifications/enabled/teamMode — survive a
   // builder save instead of being silently wiped out.
   const existing = await getForm(slug);
+  if (!existing || !canAccessForm(user, existing)) {
+    return NextResponse.json({ error: "Form not found" }, { status: 404 });
+  }
 
   const definition: FormDefinition = {
     ...existing,
@@ -55,6 +68,9 @@ export async function PATCH(
   request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
 ) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
   const { slug } = await context.params;
   const body = await request.json().catch(() => null);
 
@@ -62,7 +78,17 @@ export async function PATCH(
     return NextResponse.json({ error: "Missing patch body" }, { status: 400 });
   }
 
-  const form = await patchForm(slug, body);
+  const existing = await getForm(slug);
+  if (!existing || !canAccessForm(user, existing)) {
+    return NextResponse.json({ error: "Form not found" }, { status: 404 });
+  }
+
+  // ownerId is set by the server (at creation / via admin client actions),
+  // never by a patch body from the browser.
+  const safePatch = { ...body };
+  delete safePatch.ownerId;
+
+  const form = await patchForm(slug, safePatch);
   if (!form) {
     return NextResponse.json({ error: "Form not found" }, { status: 404 });
   }
@@ -74,9 +100,16 @@ export async function DELETE(
   _request: NextRequest,
   context: RouteContext<"/api/forms/[slug]">
 ) {
-  const { slug } = await context.params;
-  const ok = await deleteForm(slug);
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
+  const { slug } = await context.params;
+  const existing = await getForm(slug);
+  if (!existing || !canAccessForm(user, existing)) {
+    return NextResponse.json({ error: "Form not found" }, { status: 404 });
+  }
+
+  const ok = await deleteForm(slug);
   if (!ok) {
     return NextResponse.json({ error: "Form not found" }, { status: 404 });
   }

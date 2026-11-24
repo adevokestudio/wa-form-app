@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { FormDefinition, FormField } from "./formSchema";
 import { makeFieldId } from "./formSchema";
+import { listAllUsers } from "./usersStore";
 
 /**
  * Server-only JSON-file store for form definitions.
@@ -31,18 +32,38 @@ const DEFAULT_FORMS: FormDefinition[] = [
 ];
 
 async function readAll(): Promise<FormDefinition[]> {
+  let forms: FormDefinition[];
   try {
     const raw = await fs.readFile(FORMS_FILE, "utf-8");
-    return JSON.parse(raw) as FormDefinition[];
+    forms = JSON.parse(raw) as FormDefinition[];
   } catch {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.writeFile(FORMS_FILE, JSON.stringify(DEFAULT_FORMS, null, 2), "utf-8");
-    return DEFAULT_FORMS;
+    forms = DEFAULT_FORMS;
   }
+
+  // One-time migration: forms created before client accounts existed have
+  // no ownerId. Once an admin account exists, fold them into the admin's
+  // own dashboard rather than leaving them unreachable by anyone.
+  const orphans = forms.filter((f) => !f.ownerId);
+  if (orphans.length > 0) {
+    const users = await listAllUsers();
+    const admin = users.find((u) => u.role === "admin");
+    if (admin) {
+      forms = forms.map((f) => (f.ownerId ? f : { ...f, ownerId: admin.id }));
+      await writeAll(forms);
+    }
+  }
+
+  return forms;
 }
 
-export async function listForms(): Promise<FormDefinition[]> {
-  return readAll();
+/** Every form belonging to one account — a client's own forms, or (for the
+ * admin's own dashboard, as opposed to viewing a specific client) the
+ * admin's own/unassigned forms. */
+export async function listForms(ownerId: string): Promise<FormDefinition[]> {
+  const forms = await readAll();
+  return forms.filter((f) => f.ownerId === ownerId);
 }
 
 export async function getForm(slug: string): Promise<FormDefinition | null> {
@@ -111,8 +132,16 @@ async function uniqueSlug(base: string, taken: Set<string>): Promise<string> {
 }
 
 /** Creates a new, near-empty form (just a title field) — used by the
- * dashboard's "+ New WhatsForm" button. */
-export async function createForm(name: string): Promise<FormDefinition> {
+ * dashboard's "+ New WhatsForm" button. `ownerId` is the account (client,
+ * or admin viewing their own dashboard) it belongs to; its WhatsApp number
+ * is pre-filled from that account's own number so each client's forms
+ * reach their own phone by default, with per-form overrides still
+ * available in Settings → Team. */
+export async function createForm(
+  name: string,
+  ownerId: string,
+  defaultWhatsappNumber = ""
+): Promise<FormDefinition> {
   const forms = await readAll();
   const taken = new Set(forms.map((f) => f.slug));
   const slug = await uniqueSlug(slugify(name || "Untitled form"), taken);
@@ -120,7 +149,8 @@ export async function createForm(name: string): Promise<FormDefinition> {
   const definition: FormDefinition = {
     slug,
     name: name.trim() || "Untitled form",
-    whatsappNumber: "",
+    ownerId,
+    whatsappNumber: defaultWhatsappNumber,
     fields: [{ id: makeFieldId(), type: "title", label: name.trim() || "Untitled form" }],
     enabled: true,
     teamMode: "single",

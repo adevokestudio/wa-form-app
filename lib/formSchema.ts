@@ -278,6 +278,11 @@ export type TeamMode = "single" | "distribute" | "conditional";
 export interface FormDefinition {
   slug: string;
   name: string;
+  /** The client account this form belongs to — scopes it to that client's
+   * dashboard. Older forms created before multi-client accounts existed
+   * don't have one on disk; formsStore migrates them to the admin account
+   * the first time the store loads. */
+  ownerId?: string;
   whatsappNumber: string;
   fields: FormField[];
   integrations?: FormIntegrations;

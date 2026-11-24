@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { getForm } from "@/lib/formsStore";
 import { appendSubmission, readSubmissions, type SubmissionRecord } from "@/lib/submissionsStore";
 
@@ -69,7 +70,15 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+/** Not used by any page today (the Responses tab reads straight from the
+ * store server-side) — kept for admin tooling/export, but gated so a
+ * client can't fetch this directly and see every other client's answers. */
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
   const submissions = await readSubmissions();
   return NextResponse.json({ submissions });
 }

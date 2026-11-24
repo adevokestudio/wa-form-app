@@ -1,14 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 
 /** Shared top bar for every /builder/[slug]/* page — Build / Share /
  * Responses on the left (matching each to its own route so the browser
  * back button and direct links work), Open + Settings on the right. */
 export default function TopNav({ slug, formName }: { slug: string; formName: string }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
   const base = `/builder/${slug}`;
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   const tabs = [
     { href: base, label: "Build", match: (p: string) => p === base },
@@ -22,7 +36,7 @@ export default function TopNav({ slug, formName }: { slug: string; formName: str
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
         <div className="flex items-center gap-3 overflow-hidden">
-          <Link href="/" aria-label="Back to dashboard" className="text-gray-400 hover:text-gray-600">
+          <Link href="/dashboard" aria-label="Back to dashboard" className="text-gray-400 hover:text-gray-600">
             ←
           </Link>
           <h1 className="truncate text-sm font-semibold text-gray-900">{formName}</h1>
@@ -46,6 +60,14 @@ export default function TopNav({ slug, formName }: { slug: string; formName: str
           >
             Settings
           </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-60"
+          >
+            {loggingOut ? "…" : "Log out"}
+          </button>
         </div>
       </div>
       <nav className="mx-auto flex max-w-5xl gap-1 px-4">
