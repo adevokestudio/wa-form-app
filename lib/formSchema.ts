@@ -2,23 +2,30 @@
  * The field types the drag-and-drop builder supports.
  *
  * "Basic" set (from the plan doc, minus Address/Location pin which still
- * need a maps library): title, text, email, phone, number, date, choice,
- * checkbox, dropdown, rating.
+ * need a maps library): text, choice, checkbox, dropdown, number, rating,
+ * date, email, phone, title, image, video.
  *
  * "Advanced" set: file, voice, signature, booking, calculation, quote,
  * payment — each maps to one row of the plan doc's Advanced table.
+ *
+ * "image" and "video" are dedicated media-answer types alongside the
+ * generic "file" (Advanced) — same underlying upload mechanism, just
+ * scoped to one media kind and surfaced in Basic since attaching a photo or
+ * clip is common enough not to need the Advanced tab.
  */
 export type FieldType =
-  | "title"
   | "text"
-  | "email"
-  | "phone"
-  | "number"
-  | "date"
   | "choice"
   | "checkbox"
   | "dropdown"
+  | "number"
   | "rating"
+  | "date"
+  | "email"
+  | "phone"
+  | "title"
+  | "image"
+  | "video"
   | "file"
   | "voice"
   | "signature"
@@ -40,44 +47,9 @@ export interface FieldTypeMeta {
 
 export const FIELD_TYPES: FieldTypeMeta[] = [
   {
-    type: "title",
-    label: "Title / Heading",
-    description: "A heading or section title — no answer collected.",
-    hasOptions: false,
-    isAnswerField: false,
-  },
-  {
     type: "text",
     label: "Text Input",
     description: "A single-line text answer.",
-    hasOptions: false,
-    isAnswerField: true,
-  },
-  {
-    type: "email",
-    label: "Email",
-    description: "Collects an email address.",
-    hasOptions: false,
-    isAnswerField: true,
-  },
-  {
-    type: "phone",
-    label: "Phone",
-    description: "Collects a phone number.",
-    hasOptions: false,
-    isAnswerField: true,
-  },
-  {
-    type: "number",
-    label: "Number",
-    description: "Collects a numeric answer.",
-    hasOptions: false,
-    isAnswerField: true,
-  },
-  {
-    type: "date",
-    label: "Date",
-    description: "Collects a date.",
     hasOptions: false,
     isAnswerField: true,
   },
@@ -103,9 +75,58 @@ export const FIELD_TYPES: FieldTypeMeta[] = [
     isAnswerField: true,
   },
   {
+    type: "number",
+    label: "Number",
+    description: "Collects a numeric answer.",
+    hasOptions: false,
+    isAnswerField: true,
+  },
+  {
     type: "rating",
     label: "Rating",
     description: "A star rating scale.",
+    hasOptions: false,
+    isAnswerField: true,
+  },
+  {
+    type: "date",
+    label: "Date",
+    description: "Collects a date.",
+    hasOptions: false,
+    isAnswerField: true,
+  },
+  {
+    type: "email",
+    label: "Email",
+    description: "Collects an email address.",
+    hasOptions: false,
+    isAnswerField: true,
+  },
+  {
+    type: "phone",
+    label: "Phone",
+    description: "Collects a phone number.",
+    hasOptions: false,
+    isAnswerField: true,
+  },
+  {
+    type: "title",
+    label: "Title / Heading",
+    description: "A heading or section title — no answer collected.",
+    hasOptions: false,
+    isAnswerField: false,
+  },
+  {
+    type: "image",
+    label: "Image",
+    description: "Lets the respondent attach a photo as their answer.",
+    hasOptions: false,
+    isAnswerField: true,
+  },
+  {
+    type: "video",
+    label: "Video",
+    description: "Lets the respondent attach a short video clip as their answer.",
     hasOptions: false,
     isAnswerField: true,
   },
@@ -277,7 +298,10 @@ export interface FormDefinition {
 }
 
 export function fieldTypeMeta(type: FieldType): FieldTypeMeta {
-  return FIELD_TYPES.find((f) => f.type === type) ?? FIELD_TYPES[1];
+  // The `?? ` fallback is defensive only — every FieldType has an entry
+  // above — so it's found by type ("text") rather than array position,
+  // which would silently break if FIELD_TYPES is ever reordered again.
+  return FIELD_TYPES.find((f) => f.type === type) ?? FIELD_TYPES.find((f) => f.type === "text") ?? FIELD_TYPES[0];
 }
 
 export function makeFieldId(): string {

@@ -71,6 +71,8 @@ const FIELD_ICON: Record<FieldType, string> = {
   checkbox: "☑",
   dropdown: "▾",
   rating: "★",
+  image: "▨",
+  video: "▶",
   file: "⇩",
   voice: "●",
   signature: "✍",
@@ -792,6 +794,10 @@ function sampleValueForField(field: FormField): string {
       return (field.options ?? []).slice(0, 2).join(", ") || "Option 1, Option 2";
     case "rating":
       return "5";
+    case "image":
+      return "https://example.com/uploads/sample.jpg";
+    case "video":
+      return "https://example.com/uploads/sample.mp4";
     case "file":
       return "https://example.com/uploads/sample.pdf";
     case "voice":

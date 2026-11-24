@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WA Form — WhatsApp Form Builder
 
-## Getting Started
+A drag-and-drop form builder that turns answers into a pre-filled WhatsApp message, so a respondent fills out a web form and it opens WhatsApp ready to send — no backend chat integration required.
 
-First, run the development server:
+## Features
+
+- Drag-and-drop builder with Basic and Advanced field types: Text, Multiple Choice, Checkbox, Dropdown, Number, Rating, Date, Email, Phone, Title/Heading, Image, Video, File Upload, Voice Note, E-Signature, Booking/Appointment Slot, Calculation, Live Quote Calculator, and Payment Link.
+- Live WhatsApp message preview as you build.
+- Conditional Logic (show/hide fields based on other answers) and Conditional WhatsApp Routing (send to a different number based on answers).
+- Settings: General, SEO (real `<head>` metadata), Notifications, Team/routing.
+- Google Sheet integration via an Apps Script Web App URL.
+- QR code fallback for desktop respondents.
+
+## Getting started
 
 ```bash
+npm install
+cp .env.local.example .env.local   # fill in your WhatsApp number
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Next.js 16 (App Router, Turbopack)
+- React + TypeScript
+- dnd-kit (drag-and-drop builder)
+- Tailwind CSS
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+- `app/builder/[slug]/` — the form builder UI (drag-and-drop canvas, Add Questions panel, Settings, Share, Responses)
+- `app/f/[slug]/` — the public-facing form a respondent fills out
+- `app/api/` — form CRUD, submissions, and file uploads
+- `lib/formSchema.ts` — field type definitions and form data model
+- `lib/whatsapp.ts` — builds the pre-filled WhatsApp message from submitted answers
+- `lib/formula.ts` — expression evaluator for Calculation / Live Quote fields
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The easiest way to deploy is [Vercel](https://vercel.com/new), from the creators of Next.js. See the [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) for other options.

@@ -475,6 +475,30 @@ function FieldInput({
       );
     }
 
+    case "image":
+      return (
+        <FileUploadField
+          field={field}
+          formSlug={formSlug}
+          value={value as string}
+          onChange={onChange}
+          accept="image/*"
+          preview="image"
+        />
+      );
+
+    case "video":
+      return (
+        <FileUploadField
+          field={field}
+          formSlug={formSlug}
+          value={value as string}
+          onChange={onChange}
+          accept="video/*"
+          preview="video"
+        />
+      );
+
     case "file":
       return <FileUploadField field={field} formSlug={formSlug} value={value as string} onChange={onChange} />;
 
@@ -503,11 +527,21 @@ function FileUploadField({
   formSlug,
   value,
   onChange,
+  accept,
+  preview = "link",
 }: {
   field: FormField;
   formSlug: string;
   value: string | undefined;
   onChange: (value: string) => void;
+  /** Hints the device's file picker to a media kind (e.g. opens the camera
+   * roll for "image/*"); the upload itself accepts whatever the browser
+   * lets through, since this is a UI hint, not server-side validation. */
+  accept?: string;
+  /** How to show the already-uploaded value: an inline thumbnail for
+   * "image", a small playable clip for "video", or a plain "view" link
+   * (the generic File Upload field's existing behavior). */
+  preview?: "image" | "video" | "link";
 }) {
   const [status, setStatus] = useState<"idle" | "uploading" | "error">("idle");
 
@@ -527,13 +561,21 @@ function FileUploadField({
     <LabeledField label={field.label}>
       <input
         type="file"
+        accept={accept}
         required={field.required && !value}
         onChange={(e) => handleFile(e.target.files?.[0])}
         className="text-sm"
       />
       {status === "uploading" && <span className="text-xs text-gray-500">Uploading…</span>}
       {status === "error" && <span className="text-xs text-red-600">Upload failed — try again.</span>}
-      {value && status !== "uploading" && (
+      {value && status !== "uploading" && preview === "image" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={value} alt="" className="h-24 w-24 rounded-md border border-gray-200 object-cover" />
+      )}
+      {value && status !== "uploading" && preview === "video" && (
+        <video src={value} controls className="h-32 max-w-full rounded-md border border-gray-200" />
+      )}
+      {value && status !== "uploading" && preview === "link" && (
         <a href={value} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 underline">
           File attached — view
         </a>
