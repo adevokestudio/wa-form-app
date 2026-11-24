@@ -69,7 +69,17 @@ function runMigrations(db: Database): void {
 let dbPromise: Promise<Database> | null = null;
 
 async function loadDb(): Promise<Database> {
-  const SQL = await initSqlJs();
+  // Don't let sql.js guess where its own .wasm binary lives (relative to
+  // its own folder inside node_modules) — on Hostinger that file was
+  // missing from the deployed copy of node_modules/sql.js/dist entirely,
+  // even though it exists right after `npm install`. scripts/copy-sql-wasm.js
+  // copies it into public/ at build time instead (public/ always survives
+  // deployment — it has to, for the app's static assets to work at all),
+  // and this points sql.js there directly.
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.join(process.cwd(), "public", file),
+    useOldExtensionFunctions: false,
+  });
   await fs.mkdir(DATA_DIR, { recursive: true });
 
   let db: Database;

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Plain Node build-tooling scripts (run directly via `node`, not
+    // bundled/transpiled) — CommonJS require() is correct here, not a
+    // style violation of the app's own TypeScript/ESM source.
+    "scripts/**",
   ]),
 ]);
 

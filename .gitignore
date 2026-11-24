@@ -2,5 +2,7 @@ node_modules/
 .next/
 data/
 public/uploads/
+# Regenerated on every build by scripts/copy-sql-wasm.js — see lib/db.ts.
+public/sql-wasm.wasm
 .env.local
 .DS_Store
