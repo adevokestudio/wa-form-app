@@ -257,6 +257,19 @@ function FieldInput({
         </LabeledField>
       );
 
+    case "paragraph":
+      return (
+        <LabeledField label={field.label}>
+          <textarea
+            required={field.required}
+            value={(value as string) ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            rows={4}
+            className={inputClasses}
+          />
+        </LabeledField>
+      );
+
     case "email":
       return (
         <LabeledField label={field.label}>

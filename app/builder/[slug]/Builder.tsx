@@ -63,6 +63,7 @@ const ADVANCED_FIELD_TYPES = FIELD_TYPES.filter((f) => f.advanced);
 const FIELD_ICON: Record<FieldType, string> = {
   title: "H",
   text: "T",
+  paragraph: "¶",
   email: "@",
   phone: "☎",
   number: "#",
@@ -778,6 +779,8 @@ function sampleValueForField(field: FormField): string {
   switch (field.type) {
     case "text":
       return "Sample text";
+    case "paragraph":
+      return "A longer sample answer, written across a few sentences to show how it will look.";
     case "email":
       return "name@example.com";
     case "phone":

@@ -15,6 +15,7 @@
  */
 export type FieldType =
   | "text"
+  | "paragraph"
   | "choice"
   | "checkbox"
   | "dropdown"
@@ -50,6 +51,13 @@ export const FIELD_TYPES: FieldTypeMeta[] = [
     type: "text",
     label: "Text Input",
     description: "A single-line text answer.",
+    hasOptions: false,
+    isAnswerField: true,
+  },
+  {
+    type: "paragraph",
+    label: "Paragraph",
+    description: "A multi-line paragraph answer for longer responses.",
     hasOptions: false,
     isAnswerField: true,
   },
